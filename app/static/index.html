@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocFlow — Document Processing</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 880px; padding: 0 1rem; color: #1c2733; }
+  h1 { font-size: 1.5rem; margin-bottom: .25rem; }
+  .sub { color: #5b6b7a; margin-bottom: 1.5rem; }
+  form { display: flex; gap: .5rem; align-items: center; margin-bottom: 1.5rem; }
+  button { background: #0b5fff; color: #fff; border: 0; border-radius: 6px; padding: .5rem 1rem; cursor: pointer; }
+  button:disabled { opacity: .5; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid #e2e8f0; }
+  .status-done { color: #157347; font-weight: 600; }
+  .status-failed { color: #b02a37; font-weight: 600; }
+  .status-processing, .status-queued { color: #b8860b; font-weight: 600; }
+  pre { background: #f6f8fa; border: 1px solid #e2e8f0; border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: .82rem; }
+  a { color: #0b5fff; }
+</style>
+</head>
+<body>
+<h1>DocFlow</h1>
+<p class="sub">Upload a PDF, DOCX, TXT or image — DocFlow converts it, extracts the text, and pulls out key fields (title, emails, amounts, dates, summary).</p>
+
+<form id="upload-form">
+  <input type="file" id="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff" required>
+  <button type="submit" id="submit">Process document</button>
+  <span id="msg"></span>
+</form>
+
+<table>
+  <thead><tr><th>File</th><th>Status</th><th>Updated</th><th></th></tr></thead>
+  <tbody id="jobs"></tbody>
+</table>
+
+<div id="detail"></div>
+
+<script>
+const jobsEl = document.getElementById('jobs');
+const detailEl = document.getElementById('detail');
+const msgEl = document.getElementById('msg');
+
+async function refresh() {
+  const res = await fetch('/jobs');
+  const jobs = await res.json();
+  jobsEl.innerHTML = jobs.map(j => `
+    <tr>
+      <td>${escapeHtml(j.filename)}</td>
+      <td class="status-${j.status}">${j.status}</td>
+      <td>${new Date(j.updated_at).toLocaleTimeString()}</td>
+      <td>${j.status === 'done' ? `<a href="#" onclick="showResult('${j.id}');return false;">result</a>` : ''}</td>
+    </tr>`).join('');
+}
+
+async function showResult(id) {
+  const res = await fetch('/jobs/' + id);
+  const job = await res.json();
+  detailEl.innerHTML = '<h3>Result — ' + escapeHtml(job.filename) + '</h3><pre>' +
+    escapeHtml(JSON.stringify(job.result, null, 2)) + '</pre>';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+document.getElementById('upload-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('file');
+  if (!input.files.length) return;
+  const btn = document.getElementById('submit');
+  btn.disabled = true; msgEl.textContent = 'Uploading…';
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+  const res = await fetch('/jobs', { method: 'POST', body: fd });
+  if (res.ok) { msgEl.textContent = 'Queued.'; }
+  else { const d = await res.json(); msgEl.textContent = 'Error: ' + (d.detail || res.status); }
+  btn.disabled = false;
+  refresh();
+});
+
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>
