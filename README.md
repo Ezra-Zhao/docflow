@@ -140,3 +140,7 @@ route layer and processing steps do not change.
 See `VERIFY.md` for the live run transcript (real uvicorn server, curl
 end-to-end: TXT/DOCX/PDF uploads → `done`, corrupt PDF → `failed`,
 `.exe` → 400, converted PDF download byte-checked).
+
+## Live demo
+
+Hosted demo: see `DEPLOY.md` (Hugging Face Spaces package prepared; one account step left).
