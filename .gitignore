@@ -4,3 +4,5 @@ __pycache__/
 data/jobs/
 data/docflow.db
 .pytest_cache/
+.env
+.env.*
